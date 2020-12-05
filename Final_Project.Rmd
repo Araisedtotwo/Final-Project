@@ -1,0 +1,73 @@
+---
+title: "Final Project - Covid Deaths Data Analysis"
+author: "Arushi Arora"
+date: "12/2/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+- A MySQL 8.0 database was created on AWS with AWS RDS and connection was established with local computer
+```
+mysql -u root -h aws-movie-rating.cc7r4c0owv8u.us-east-1.rds.amazonaws.com -p 
+```
+  - Password entered
+
+#### Code to create table along with databse
+- Creating & using schema
+  ```
+  CREATE SCHEMA  IF NOT EXISTS `aws_healthcare_data` ;
+  USE `aws_healthcare_data`;
+  ```
+- Creating table
+- Code for populating the tables from .csv file stored locally
+```
+LOAD DATA LOCAL INFILE "C://User//arushi//Desktop//covid_data.csv" INTO TABLE aws_healthcare_data.covid_dataset  
+FIELDS TERMINATED BY ','
+LINES TERMINATED BY '\n'
+IGNORE 1 LINES
+
+```
+  - Response:
+  ```
+  Query OK, 1050 rows affected, 3 warnings (0.30 sec)
+  Records: 1050  Deleted: 0  Skipped: 0  Warnings: 3
+  ```
+---
+#### Code in R Markdown to import DB data for analysis
+
+```
+  library(RMySQL)
+
+  mysqlconnection = dbConnect(MySQL(), user='root', password='db_password_here', dbname ='aws_movie_ratings',host='aws-movie-rating.cc7r4c0owv8u.us-east-1.rds.amazonaws.com')
+
+  result = dbSendQuery(mysqlconnection,"SELECT * from covid_dataset")
+
+  data.frame=fetch(result)
+  deaths = data.frame
+  print(deaths)
+
+```
+
+---
+
+- Output
+
+![](./images/r_mysql.png)
+
+
+#### Reproducibility
+- Is data available on the web? (2)
+  - Yes, [Google Sheet]()
+  
+- Are you using R Markdown text and headers?
+  - Yes, please go througth the RMarkdown file, also available at [Final_Project.Rmd](https://github.com/Araisedtotwo/Final-Project/blob/master/Final_Project.Rmd)
+  
+#### Analysis
+
+#### Submission
+- rpubs link :  [here]()
+- assignment submission link :  [GitHub](https://github.com/Araisedtotwo/Final-Project)
+- graphic : yes, tables included
