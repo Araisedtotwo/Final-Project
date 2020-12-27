@@ -1,5 +1,5 @@
 ---
-title: "Final Project - Covid Deaths Data Analysis"
+title: "Final Project - Covid Data Analysis"
 author: "Arushi Arora"
 date: "12/2/2020"
 output: html_document
@@ -7,67 +7,114 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(httr)
+library(jsonlite)
+library(tidyverse)
 ```
 
-- A MySQL 8.0 database was created on AWS with AWS RDS and connection was established with local computer
-```
-mysql -u root -h aws-movie-rating.cc7r4c0owv8u.us-east-1.rds.amazonaws.com -p 
-```
-  - Password entered
+Graph - cases per state
+plot on map
+states with highest cases
+Analysis:
+T-Test
 
-#### Code to create table along with databse
-- Creating & using schema
-  ```
-  CREATE SCHEMA  IF NOT EXISTS `aws_healthcare_data` ;
-  USE `aws_healthcare_data`;
-  ```
-- Creating table
-- Code for populating the tables from .csv file stored locally
-```
-LOAD DATA LOCAL INFILE "C://User//arushi//Desktop//covid_data.csv" INTO TABLE aws_healthcare_data.covid_dataset  
-FIELDS TERMINATED BY ','
-LINES TERMINATED BY '\n'
-IGNORE 1 LINES
-
-```
-  - Response:
-  ```
-  Query OK, 1050 rows affected, 3 warnings (0.30 sec)
-  Records: 1050  Deleted: 0  Skipped: 0  Warnings: 3
-  ```
----
-#### Code in R Markdown to import DB data for analysis
-
-```
-  library(RMySQL)
-
-  mysqlconnection = dbConnect(MySQL(), user='root', password='db_password_here', dbname ='aws_movie_ratings',host='aws-movie-rating.cc7r4c0owv8u.us-east-1.rds.amazonaws.com')
-
-  result = dbSendQuery(mysqlconnection,"SELECT * from covid_dataset")
-
-  data.frame=fetch(result)
-  deaths = data.frame
-  print(deaths)
-
+```{r}
+df = read.csv("C://User//arushi//Desktop//raw_data.csv",skip = 2, header = T)
 ```
 
----
+#### Removing extra columns
+```{r}
+df$State.Senate.Majority.Political.Affiliation <- NULL
+df$State.House.Majority.Political.Affiliation <- NULL
+df$State.Attorney.General.Political.Affiliation  <- NULL
+df$State.Insurance.Commissioner.Political.Affiliation  <- NULL
+df$Footnotes   <- NULL
+head(df,5)
+```
 
-- Output
+#### Renaming column for join
+```{r}
+df2 <- df %>% 
+  rename(
+    state = State.Code,
+    affiliation = Governor.Political.Affiliation
+    )
+head(df2,5)
+```
 
-![](./images/r_mysql.png)
+
+#### Cleaning the data
+```{r}
+cleaned <- head(df2,51)
+head(cleaned,5)
+```
+
+#### Extracting COVID data from API for merging with previous dataset
+```{r warning=FALSE}
+cases <- fromJSON("https://data.cdc.gov/resource/9mfq-cb36.json?submission_date=2020-10-31", flatten = TRUE)
+head(cases,5)
+```
+#### Formatting Date
+```{r warning=FALSE}
+cases[[1]] <- substr(cases$submission_date, 0, 10)
+head(cases,5)
+```
+
+#### Joining/Merging the dataframes
+```{r}
+final_df <- merge(cleaned, cases)
+(final_df)
+```
+
+#### Converting total cases to numeric
+```{r}
+final_df <- transform(final_df, tot_cases = as.numeric(tot_cases))
+(final_df)
+```
+```{r}
+republican <- final_df[final_df$affiliation == 'Republican',]
+(republican)
+```
 
 
-#### Reproducibility
-- Is data available on the web? (2)
-  - Yes, [Google Sheet]()
-  
-- Are you using R Markdown text and headers?
-  - Yes, please go througth the RMarkdown file, also available at [Final_Project.Rmd](https://github.com/Araisedtotwo/Final-Project/blob/master/Final_Project.Rmd)
-  
-#### Analysis
+```{r}
+democrat <- final_df[final_df$affiliation == 'Democrat',]
+(democrat)
+```
+#### Total cases for republican
+```{r}
+republican$tot_cases
+length(republican$tot_cases)
+```
 
-#### Submission
-- rpubs link :  [here]()
-- assignment submission link :  [GitHub](https://github.com/Araisedtotwo/Final-Project)
-- graphic : yes, tables included
+#### Total cases for democrat
+```{r}
+democrat$tot_cases
+length(democrat$tot_cases)
+```
+
+```{r}
+t.test(republican$tot_cases, y = democrat$tot_cases,alternative = c("two.sided"),
+       mu = 0, paired = FALSE, var.equal = FALSE,
+       conf.level = 0.95)
+```
+```{r}
+dat_ggplot <- data.frame(
+  value = c(republican$tot_cases,democrat$tot_cases),
+  sample = c(rep("1",26), rep("2", 25))
+)
+
+library(ggplot2)
+
+ggplot(dat_ggplot) +
+  aes(x = sample, y = value) +
+  geom_boxplot() +
+  theme_minimal()
+```
+
+
+```{r}
+boxplot(value ~ sample,
+  data = dat_ggplot
+)
+```
