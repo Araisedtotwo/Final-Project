@@ -160,8 +160,11 @@ t.test(republican2$death_percent, y = democrat2$death_percent,alternative = c("t
        conf.level = 0.95)
 ```
 ```{r}
-hist(republican2$death_percent)
+Republican_Death_Percentage <- republican2$death_percent
+hist(Republican_Death_Percentage)
 ```
 ```{r}
-hist(democrat2$death_percent)
+
+Democrat_Death_Percentage <- democrat2$death_percent
+hist(Democrat_Death_Percentage)
 ```
