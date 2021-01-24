@@ -10,6 +10,8 @@ knitr::opts_chunk$set(echo = TRUE)
 library(httr)
 library(jsonlite)
 library(tidyverse)
+library(ggplot2)
+library(dplyr)
 ```
 
 Graph - cases per state
@@ -18,11 +20,12 @@ states with highest cases
 Analysis:
 T-Test
 
+#### Import political affiliation by state data
 ```{r}
-df = read.csv("C://User//arushi//Desktop//raw_data.csv",skip = 2, header = T)
+df = read.csv("https://raw.githubusercontent.com/Araisedtotwo/Final-Project/main/raw_data.csv",skip = 2, header = T)
 ```
 
-#### Removing extra columns
+#### Cleaning the data - Removing extra columns
 ```{r}
 df$State.Senate.Majority.Political.Affiliation <- NULL
 df$State.House.Majority.Political.Affiliation <- NULL
@@ -32,7 +35,7 @@ df$Footnotes   <- NULL
 head(df,5)
 ```
 
-#### Renaming column for join
+#### Renaming column "State.Code" to "state & "Governor.Political.Affiliation" to "affiliation" for join
 ```{r}
 df2 <- df %>% 
   rename(
@@ -42,14 +45,13 @@ df2 <- df %>%
 head(df2,5)
 ```
 
-
-#### Cleaning the data
+#### Cleaning the data - Removing invalid rows from the bottom (not part of the analysis)
 ```{r}
 cleaned <- head(df2,51)
 head(cleaned,5)
 ```
 
-#### Extracting COVID data from API for merging with previous dataset
+#### Extracting COVID data from API for merging with political affiliation dataset
 ```{r warning=FALSE}
 cases <- fromJSON("https://data.cdc.gov/resource/9mfq-cb36.json?submission_date=2020-10-31", flatten = TRUE)
 head(cases,5)
@@ -63,23 +65,25 @@ head(cases,5)
 #### Joining/Merging the dataframes
 ```{r}
 final_df <- merge(cleaned, cases)
-(final_df)
+head(final_df, 5)
 ```
 
 #### Converting total cases to numeric
 ```{r}
 final_df <- transform(final_df, tot_cases = as.numeric(tot_cases))
-(final_df)
+final_df <- transform(final_df, tot_death = as.numeric(tot_death))
+head(final_df, 5)
 ```
+#### Extracting the data for the Republicans
 ```{r}
 republican <- final_df[final_df$affiliation == 'Republican',]
-(republican)
+head(republican,5)
 ```
 
-
+#### Extracting the data for the Democrats
 ```{r}
 democrat <- final_df[final_df$affiliation == 'Democrat',]
-(democrat)
+head(democrat,5)
 ```
 #### Total cases for republican
 ```{r}
@@ -92,29 +96,72 @@ length(republican$tot_cases)
 democrat$tot_cases
 length(democrat$tot_cases)
 ```
+#### Check whether average total cases in Democrat vs Republican affiliated states are significantly different (using T-test)
+```{r}
+summary(democrat$tot_cases)
+```
+
+```{r}
+summary(republican$tot_cases)
+```
 
 ```{r}
 t.test(republican$tot_cases, y = democrat$tot_cases,alternative = c("two.sided"),
        mu = 0, paired = FALSE, var.equal = FALSE,
        conf.level = 0.95)
 ```
+#### Assigining flags to Republican (1) and Decomcrats (2)
+#### Box Plot : Covid Cases Distribution by states' political party affiliation
+##### Republicans (1) and Decomcrats (2)
+
 ```{r}
 dat_ggplot <- data.frame(
   value = c(republican$tot_cases,democrat$tot_cases),
-  sample = c(rep("1",26), rep("2", 25))
+  Political_Affiliation = c(rep("Republican States",26), rep("Democrat States", 25))
 )
 
-library(ggplot2)
-
 ggplot(dat_ggplot) +
-  aes(x = sample, y = value) +
+  aes(x = Political_Affiliation, y = value) +
   geom_boxplot() +
   theme_minimal()
 ```
 
+---
 
+#### Analysis 2: Finding death proportion corrlation between states of different political party affiliation
+
+---
+
+#### Adding a new column death proportion (percentage)
 ```{r}
-boxplot(value ~ sample,
-  data = dat_ggplot
-)
+
+final_df$death_percent <-  final_df$tot_death / final_df$tot_cases * 100
+
+final_df %>%
+  select(Location, affiliation, tot_death, tot_cases,death_percent)
+
+```
+
+#### Death Percantage Visualization
+```{r}
+
+```
+
+#### Segregating affilications
+```{r}
+republican2 <- final_df[final_df$affiliation == 'Republican',]
+democrat2 <- final_df[final_df$affiliation == 'Democrat',]
+summary(republican2$death_percent)
+summary(democrat2$death_percent)
+```
+```{r}
+t.test(republican2$death_percent, y = democrat2$death_percent,alternative = c("two.sided"),
+       mu = 0, paired = FALSE, var.equal = FALSE,
+       conf.level = 0.95)
+```
+```{r}
+hist(republican2$death_percent)
+```
+```{r}
+hist(democrat2$death_percent)
 ```
